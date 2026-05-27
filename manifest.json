@@ -1,4 +1,5 @@
 {
+  "id": "/DEMO-Arena-Tarot/",
   "name": "DEMO Tarot Concours",
   "short_name": "TarotDemo",
   "start_url": "./index.html",
@@ -15,6 +16,22 @@
       "src": "./icon-512.png", 
       "sizes": "512x512", 
       "type": "image/png" 
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Application Tarot mobile"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Application Tarot ordinateur"
     }
   ]
 }
