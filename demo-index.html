@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>ARENA TAROT - VERSION DÉMO</title>
+    <link rel="icon" type="image/png" href="favicon.png/icon-192.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#064e3b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #064e3b; color: white; font-family: sans-serif; }
+        .table-box { background: #1f2937; border: 2px solid #374151; border-radius: 12px; padding: 10px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.4); height: fit-content; }
+        
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+
+        .input-score { width: 85px; height: 38px; color: black; text-align: center; font-weight: 800; border-radius: 6px; border: 1px solid rgba(0,0,0,0.2); font-size: 1.2rem; }
+        .input-score:focus { outline: none; border-color: #fbbf24; background-color: #fff !important; }
+
+        .balance-ok { color: #10b981; font-weight: 900; font-size: 0.8rem; }
+        .balance-err { color: #ef4444; background: rgba(239, 68, 68, 0.2); border-radius: 4px; font-weight: 900; font-size: 0.8rem; padding: 2px 8px; } 
+        
+        .tab-btn { padding: 10px 18px; font-weight: bold; border-radius: 10px; cursor: pointer; transition: 0.3s; text-transform: uppercase; font-size: 0.75rem; }
+        .active { background: #facc15 !important; color: black !important; }
+        
+        .pos-badge { font-size: 0.65rem; font-weight: 900; text-transform: uppercase; width: 45px; display: inline-block; }
+        
+        .color-0 { color: #facc15; } /* NORD */
+        .color-1 { color: #34d399; } /* SUD */
+        .color-2 { color: #60a5fa; } /* EST */
+        .color-3 { color: #f472b6; } /* OUEST */
+
+        .nom-joueur { font-size: 0.85rem; color: white; text-transform: uppercase; font-weight: 700; }
+        .editable-name { background: transparent; border: none; color: inherit; text-transform: uppercase; font-weight: 700; width: 100%; outline: none; border-bottom: 1px dotted rgba(255,255,255,0.2); }
+        .editable-name:focus { border-bottom: 1px solid #facc15; background: rgba(255,255,255,0.05); }
+        
+        .table-group { background: rgba(250, 204, 21, 0.1); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 12px; padding: 8px; margin-bottom: 12px; }
+        .table-title { color: #facc15; font-size: 10px; font-weight: 900; text-transform: uppercase; margin-bottom: 6px; display: flex; justify-content: space-between; }
+
+        /* Sélecteur de position coloré (inscription & liste) */
+        .pos-picker { position: relative; display: inline-block; }
+        .pos-picker-btn {
+            background: #111827;
+            border: 1px solid rgba(255,255,255,0.2);
+            font-weight: 900;
+            text-transform: uppercase;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+            user-select: none;
+        }
+        .pos-picker-btn.lg { padding: 10px 12px; border-radius: 8px; font-size: 0.8rem; min-width: 105px; }
+        .pos-picker-btn.sm { padding: 2px 7px; border-radius: 5px; font-size: 0.65rem; min-width: 38px; }
+        .pos-picker-menu {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: calc(100% + 4px);
+            background: #111827;
+            border: 1px solid rgba(250, 204, 21, 0.45);
+            border-radius: 8px;
+            padding: 4px;
+            z-index: 80;
+            min-width: 105px;
+            box-shadow: 0 12px 24px rgba(0,0,0,0.65);
+        }
+        .pos-picker.open .pos-picker-menu { display: block; }
+
+        /* Menu flottant global pour ne jamais être coupé par un conteneur scrollable */
+        #floatingPosMenu {
+            display: none;
+            position: fixed;
+            background: #111827;
+            border: 1px solid rgba(250, 204, 21, 0.55);
+            border-radius: 8px;
+            padding: 4px;
+            z-index: 9999;
+            min-width: 56px;
+            box-shadow: 0 14px 28px rgba(0,0,0,0.75);
+        }
+        #floatingPosMenu.open { display: block; }
+
+        .pos-picker-item {
+            width: 100%;
+            text-align: center;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-weight: 900;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            display: block;
+        }
+        .pos-picker-item:hover { background: rgba(255,255,255,0.12); }
+
+        @media print {
+            .no-print, header, nav, .tab-btn, h1, #sec-inscriptions, #sec-parties, .flex { display: none !important; }
+            body { background: white !important; color: black !important; padding: 0 !important; }
+            #sec-classement { display: block !important; border: 2px solid black !important; width: 100% !important; margin: 0 !important; padding: 20px !important; background: white !important; color: black !important; box-shadow: none !important; }
+        }
+    </style>
+</head>
+<body class="p-4">
+
+    <img src="https://github.com/gasnier-coder/arena-tarot/blob/main/logo2.gif?raw=true" 
+         style="position: absolute; top: 10px; left: 100px; width: 140px; z-index: 50;" 
+         class="no-print"
+         alt="Logo">
+
+    <div class="text-center mb-6 no-print">
+        <div class="flex flex-col items-center justify-center mb-3">
+            <img src="./LETTRES ARENA.png" alt="ARENA TAROT" class="max-h-20 md:max-h-24 w-auto object-contain drop-shadow-[0_6px_14px_rgba(0,0,0,0.65)]">
+            <div class="mt-2 inline-flex items-center gap-2 bg-amber-500/20 border border-amber-400 text-amber-300 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider shadow-md">
+                <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                <span>Version Démo — Limitée à 12 joueurs (3 tables max)</span>
+            </div>
+        </div>
+        <div class="flex flex-wrap justify-center items-center gap-2">
+            <button onclick="clearAllData()" class="bg-red-900/50 hover:bg-red-700 text-red-200 text-[9px] font-black uppercase px-3 py-2 rounded-lg transition mr-2 border border-red-500/30">🗑️ Reset</button>
+            <div class="flex gap-2">
+                <button onclick="showSection('inscriptions')" id="btn-inscriptions" class="tab-btn bg-emerald-900 active">1. Inscriptions</button>
+                <button onclick="showSection('parties')" id="btn-parties" class="tab-btn bg-emerald-800">2. Tables / Scores</button>
+                <button onclick="showSection('classement')" id="btn-classement" class="tab-btn bg-emerald-900">3. Classement</button>
+            </div>
+        </div>
+    </div>
+
+    <section id="sec-inscriptions" class="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 no-print">
+        <div class="bg-black/40 p-6 rounded-2xl border border-white/10 shadow-xl">
+            <div class="mb-4 pb-4 border-b border-white/10">
+                <h2 class="text-[10px] font-black text-yellow-400 uppercase mb-2 tracking-widest">⚙️ Configuration</h2>
+                <div class="flex items-center gap-3">
+                    <label class="text-[10px] font-bold uppercase opacity-60">Nombre de Parties :</label>
+                    <select id="nbPartiesSelect" onchange="changeNbParties(this.value)" class="bg-white text-black font-black px-3 py-1 rounded text-xs outline-none">
+                        <script>
+                            for(let i=1; i<=10; i++) {
+                                document.write(`<option value="${i}" ${i==4?'selected':''}>${i}</option>`);
+                            }
+                        </script>
+                    </select>
+                </div>
+            </div>
+            <h2 class="text-[10px] font-black text-emerald-400 uppercase mb-2 tracking-widest">📥 Inscription Individuelle (Max 12)</h2>
+            <div class="pt-2 flex gap-2 mb-6 items-center">
+                <input type="text" id="addName" placeholder="NOM DU JOUEUR" class="flex-1 p-3 rounded-lg text-black font-bold uppercase text-sm outline-none" onkeypress="if(event.key==='Enter') addPlayer()">
+                <input type="hidden" id="addPos" value="0">
+                <div class="pos-picker" id="addPosPicker">
+                    <button type="button" onclick="togglePosPicker('addPosPicker', event)" id="addPosBtn" class="pos-picker-btn lg color-0">
+                        <span id="addPosLabel">NORD</span>
+                        <span class="text-[9px] opacity-70">▼</span>
+                    </button>
+                    <div class="pos-picker-menu">
+                        <button type="button" onclick="selectAddPos(0, event)" class="pos-picker-item color-0">NORD</button>
+                        <button type="button" onclick="selectAddPos(1, event)" class="pos-picker-item color-1">SUD</button>
+                        <button type="button" onclick="selectAddPos(2, event)" class="pos-picker-item color-2">EST</button>
+                        <button type="button" onclick="selectAddPos(3, event)" class="pos-picker-item color-3">OUEST</button>
+                    </div>
+                </div>
+                <button onclick="addPlayer()" class="bg-emerald-500 px-6 py-2.5 rounded-lg font-black text-xl hover:bg-emerald-400 transition">+</button>
+            </div>
+            
+            <h2 class="text-[10px] font-black text-blue-400 uppercase mb-2 tracking-widest">📋 Importation Rapide</h2>
+            <textarea id="importArea" rows="2" class="w-full p-3 mb-3 text-black font-bold text-xs rounded-xl outline-none" placeholder="Collez une liste ici (max 12 joueurs au total)..."></textarea>
+
+            <div class="mb-4">
+                <button type="button" onclick="autoDistribute()" class="w-full bg-purple-600 hover:bg-purple-500 py-2 rounded-lg font-black text-white uppercase text-[10px] transition cursor-pointer">Dispatcher la liste collée N/S/E/O</button>
+            </div>
+
+            <div class="pt-3 border-t border-white/10">
+                <h2 class="text-[10px] font-black text-amber-400 uppercase mb-2 tracking-widest">📦 Fichier de Sauvegarde Complet (JSON)</h2>
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" onclick="exportSaveJSON()" class="bg-amber-500 hover:bg-amber-400 text-black py-2 rounded-lg font-black uppercase text-[10px] transition cursor-pointer">⬇️ Sauvegarde</button>
+                    <label class="bg-amber-900/60 hover:bg-amber-800 py-2 rounded-lg font-black text-amber-200 uppercase text-[10px] text-center cursor-pointer border border-amber-500/30 transition">
+                        ⬆️ Importer une sauvegarde
+                        <input type="file" id="jsonFileInput" accept=".json,application/json,*/*" class="hidden" onchange="importSaveJSON(this)">
+                    </label>
+                </div>
+                <div id="jsonStatus" class="text-[10px] font-bold text-amber-300 mt-2 min-h-[14px]"></div>
+            </div>
+        </div>
+
+        <div class="bg-black/20 p-6 rounded-2xl border border-white/5">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-[10px] font-black text-yellow-500 uppercase italic tracking-widest">📋 Organisation (Modifiable)</h2>
+                <span class="text-[10px] font-black uppercase bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded border border-amber-400/40">DÉMO • MAX 12</span>
+            </div>
+            <div id="playerList" class="max-h-[500px] overflow-y-auto pr-2"></div>
+            <div class="mt-4 border-t border-white/10 pt-2 flex justify-between items-center">
+                <span id="demoQuotaHint" class="text-[10px] font-bold text-emerald-300"></span>
+                <div class="font-black text-yellow-400 text-xs italic" id="statCount">0 / 12 Joueurs</div>
+            </div>
+        </div>
+    </section>
+
+    <section id="sec-parties" class="hidden no-print">
+        <div class="flex flex-wrap gap-2 mb-6 justify-center" id="nav-parties"></div>
+        <div id="zone-tables" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 max-w-[1600px] mx-auto px-2"></div>
+    </section>
+
+    <section id="sec-classement" class="hidden max-w-xl mx-auto bg-black/60 p-6 rounded-2xl border-2 border-yellow-500 relative shadow-2xl">
+        <button onclick="window.print()" class="absolute top-4 right-6 bg-yellow-500 text-black px-4 py-1 rounded-full font-black text-[10px] no-print hover:bg-yellow-400 italic">IMPRIMER PDF</button>
+        <div id="classement-content" class="mt-2"></div>
+    </section>
+
+    <div id="floatingPosMenu">
+        <button type="button" onclick="pickFloatingPos(0, event)" class="pos-picker-item color-0">N</button>
+        <button type="button" onclick="pickFloatingPos(1, event)" class="pos-picker-item color-1">S</button>
+        <button type="button" onclick="pickFloatingPos(2, event)" class="pos-picker-item color-2">E</button>
+        <button type="button" onclick="pickFloatingPos(3, event)" class="pos-picker-item color-3">O</button>
+    </div>
+
+    <script>
+        const MAX_DEMO_PLAYERS = 12;
+        const POS_NAMES = ["NORD", "SUD", "EST", "OUEST"];
+        const POS_LETTERS = ["N", "S", "E", "O"];
+        let activePlayerIdxForMenu = null;
+
+        function closeFloatingPosMenu() {
+            const menu = document.getElementById('floatingPosMenu');
+            if (menu) menu.classList.remove('open');
+            activePlayerIdxForMenu = null;
+        }
+
+        function closeAllPosPickers(exceptId = null) {
+            document.querySelectorAll('.pos-picker.open').forEach(el => {
+                if (el.id !== exceptId) el.classList.remove('open');
+            });
+            if (!exceptId) closeFloatingPosMenu();
+        }
+
+        function togglePosPicker(pickerId, event) {
+            event.stopPropagation();
+            closeFloatingPosMenu();
+            const picker = document.getElementById(pickerId);
+            if (!picker) return;
+            const willOpen = !picker.classList.contains('open');
+            closeAllPosPickers(willOpen ? pickerId : null);
+            picker.classList.toggle('open', willOpen);
+        }
+
+        function openFloatingPlayerMenu(idx, btnEl, event) {
+            event.stopPropagation();
+            closeAllPosPickers();
+            const menu = document.getElementById('floatingPosMenu');
+            if (!menu || !btnEl) return;
+
+            if (activePlayerIdxForMenu === idx && menu.classList.contains('open')) {
+                closeFloatingPosMenu();
+                return;
+            }
+
+            activePlayerIdxForMenu = idx;
+            const rect = btnEl.getBoundingClientRect();
+            menu.classList.add('open');
+
+            const menuWidth = menu.offsetWidth || 64;
+            const menuHeight = menu.offsetHeight || 124;
+
+            let left = rect.right - menuWidth;
+            if (left < 8) left = 8;
+            if (left + menuWidth > window.innerWidth - 8) left = window.innerWidth - menuWidth - 8;
+
+            let top = rect.bottom + 4;
+            if (top + menuHeight > window.innerHeight - 8) {
+                top = rect.top - menuHeight - 4;
+            }
+            if (top < 8) top = 8;
+
+            menu.style.left = `${left}px`;
+            menu.style.top = `${top}px`;
+        }
+
+        function pickFloatingPos(pos, event) {
+            event.stopPropagation();
+            if (activePlayerIdxForMenu !== null) {
+                updatePlayerPos(activePlayerIdxForMenu, pos);
+            }
+            closeFloatingPosMenu();
+        }
+
+        function selectAddPos(pos, event) {
+            event.stopPropagation();
+            const val = parseInt(pos);
+            document.getElementById('addPos').value = val;
+            const btn = document.getElementById('addPosBtn');
+            const lbl = document.getElementById('addPosLabel');
+            btn.className = `pos-picker-btn lg color-${val}`;
+            lbl.textContent = POS_NAMES[val];
+            closeAllPosPickers();
+        }
+
+        document.addEventListener('click', () => closeAllPosPickers());
+        window.addEventListener('scroll', () => closeFloatingPosMenu(), true);
+        window.addEventListener('resize', () => closeFloatingPosMenu());
+
+        function safeParse(key, fallback) {
+            try {
+                const raw = localStorage.getItem(key);
+                return raw ? JSON.parse(raw) : fallback;
+            } catch (e) {
+                return fallback;
+            }
+        }
+
+        let rawPlayers = safeParse('tarot_demo_raw_players', []).slice(0, MAX_DEMO_PLAYERS);
+        let scoresData = safeParse('tarot_demo_scores_v3', {});
+        let totalParties = parseInt(localStorage.getItem('tarot_demo_nb_parties')) || 4;
+        let currentIdx = 0;
+
+        function setJsonStatus(msg, isError = false) {
+            const el = document.getElementById("jsonStatus");
+            if (!el) return;
+            el.textContent = msg;
+            el.className = isError
+                ? "text-[10px] font-bold text-red-400 mt-2 min-h-[14px]"
+                : "text-[10px] font-bold text-emerald-300 mt-2 min-h-[14px]";
+        }
+
+        function saveData(alertUser = false) {
+            localStorage.setItem('tarot_demo_raw_players', JSON.stringify(rawPlayers));
+            localStorage.setItem('tarot_demo_scores_v3', JSON.stringify(scoresData));
+            localStorage.setItem('tarot_demo_nb_parties', totalParties);
+            if(alertUser) alert("Données sauvegardées !");
+        }
+
+        // --- EXPORT / IMPORT FICHIER DE SAUVEGARDE JSON ---
+        function exportSaveJSON() {
+            try {
+                const payload = {
+                    app: "ARENA_TAROT_DEMO",
+                    version: 1,
+                    exportedAt: new Date().toISOString(),
+                    totalParties: totalParties,
+                    rawPlayers: rawPlayers,
+                    scoresData: scoresData
+                };
+                const jsonText = JSON.stringify(payload, null, 2);
+                const dateStr = new Date().toISOString().slice(0, 10);
+                const fileName = `sauvegarde-tarot-demo-${dateStr}.json`;
+
+                const blob = new Blob([jsonText], { type: "application/octet-stream" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = fileName;
+                a.style.display = "none";
+                document.body.appendChild(a);
+                a.click();
+
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 1000);
+
+                setJsonStatus(`Export lancé : ${fileName} (${rawPlayers.length} joueur(s))`);
+            } catch (err) {
+                setJsonStatus("Erreur export JSON : " + err.message, true);
+            }
+        }
+
+        function importSaveJSON(input) {
+            const file = input.files && input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (!Array.isArray(data.rawPlayers) || typeof data.scoresData !== "object" || data.scoresData === null) {
+                        setJsonStatus("Fichier JSON invalide (structure incorrecte).", true);
+                        input.value = "";
+                        return;
+                    }
+                    let importedPlayers = data.rawPlayers;
+                    if (importedPlayers.length > MAX_DEMO_PLAYERS) {
+                        alert(`⚠️ VERSION DÉMO : Ce fichier contient ${importedPlayers.length} joueurs.\nLa limite étant de ${MAX_DEMO_PLAYERS} joueurs, seuls les ${MAX_DEMO_PLAYERS} premiers ont été importés.`);
+                        importedPlayers = importedPlayers.slice(0, MAX_DEMO_PLAYERS);
+                    }
+                    rawPlayers = importedPlayers;
+                    scoresData = data.scoresData;
+                    totalParties = parseInt(data.totalParties) || 4;
+                    currentIdx = 0;
+                    document.getElementById("nbPartiesSelect").value = totalParties;
+                    saveData(false);
+                    renderInscriptions();
+                    if (!document.getElementById("sec-parties").classList.contains("hidden")) {
+                        renderPartie(currentIdx);
+                    }
+                    if (!document.getElementById("sec-classement").classList.contains("hidden")) {
+                        renderClassement();
+                    }
+                    setJsonStatus(`Import réussi : ${file.name} (${rawPlayers.length}/${MAX_DEMO_PLAYERS} joueur(s))`);
+                } catch (err) {
+                    setJsonStatus("Lecture JSON impossible : " + err.message, true);
+                }
+                input.value = "";
+            };
+            reader.onerror = function() {
+                setJsonStatus("Erreur de lecture du fichier.", true);
+                input.value = "";
+            };
+            reader.readAsText(file);
+        }
+
+        function autoDistribute() {
+            const area = document.getElementById('importArea');
+            if (!area) return;
+
+            const lines = area.value
+                .split(/\r?\n/)
+                .map(l => l.split(/[;,]/)[0].trim().toUpperCase())
+                .filter(name => name !== "");
+
+            if (lines.length === 0) return;
+
+            const remainingSlots = MAX_DEMO_PLAYERS - rawPlayers.length;
+            if (remainingSlots <= 0) {
+                alert(`⚠️ LIMITE DÉMO ATTEINTE !\nLa version de démonstration est limitée à ${MAX_DEMO_PLAYERS} joueurs maximum (3 tables).`);
+                return;
+            }
+
+            const toAdd = lines.slice(0, remainingSlots);
+            const startIdx = rawPlayers.length;
+
+            toAdd.forEach((name, idx) => {
+                rawPlayers.push({ nom: name, pos: (startIdx + idx) % 4 });
+            });
+
+            area.value = "";
+            saveData();
+            renderInscriptions();
+
+            if (lines.length > remainingSlots) {
+                const ignored = lines.length - remainingSlots;
+                alert(`⚠️ LIMITE DÉMO (${MAX_DEMO_PLAYERS} JOUEURS MAX) :\n${toAdd.length} joueur(s) ajouté(s), ${ignored} joueur(s) ignoré(s) car le plafond de ${MAX_DEMO_PLAYERS} joueurs est atteint.`);
+            }
+        }
+
+        function getOrganizedData() {
+            let waiting = [...rawPlayers];
+            let tables = [];
+            let tableCount = 0;
+            while (true) {
+                let nIdx = waiting.findIndex(p => p.pos === 0);
+                let sIdx = waiting.findIndex(p => p.pos === 1);
+                let eIdx = waiting.findIndex(p => p.pos === 2);
+                let oIdx = waiting.findIndex(p => p.pos === 3);
+                if (nIdx !== -1 && sIdx !== -1 && eIdx !== -1 && oIdx !== -1) {
+                    tableCount++;
+                    let pN = waiting.splice(nIdx, 1)[0];
+                    sIdx = waiting.findIndex(p => p.pos === 1);
+                    let pS = waiting.splice(sIdx, 1)[0];
+                    eIdx = waiting.findIndex(p => p.pos === 2);
+                    let pE = waiting.splice(eIdx, 1)[0];
+                    oIdx = waiting.findIndex(p => p.pos === 3);
+                    let pO = waiting.splice(oIdx, 1)[0];
+                    tables.push({ id: tableCount, players: [pN, pS, pE, pO] });
+                } else break;
+            }
+            return { tables, waiting };
+        }
+
+        function renderInscriptions() {
+            closeFloatingPosMenu();
+            const list = document.getElementById('playerList');
+            const { tables, waiting } = getOrganizedData();
+            let html = "";
+            tables.forEach(t => {
+                html += `<div class="table-group"><div class="table-title"><span>TABLE ${t.id}</span> ✅</div>`;
+                t.players.forEach(p => { html += renderPlayerRow(p); });
+                html += `</div>`;
+            });
+            if (waiting.length > 0) {
+                html += `<div class="text-[9px] font-bold opacity-40 uppercase mb-2 mt-4">En attente :</div>`;
+                waiting.forEach(p => { html += renderPlayerRow(p); });
+            }
+            list.innerHTML = html || "<div class='text-center py-10 opacity-20 text-xs italic'>Aucun inscrit</div>";
+
+            const statEl = document.getElementById('statCount');
+            const hintEl = document.getElementById('demoQuotaHint');
+            const remaining = MAX_DEMO_PLAYERS - rawPlayers.length;
+
+            statEl.innerText = `${rawPlayers.length} / ${MAX_DEMO_PLAYERS} Joueurs (${tables.length} Tables)`;
+            if (remaining <= 0) {
+                statEl.className = "font-black text-red-400 text-xs italic";
+                hintEl.className = "text-[10px] font-black text-red-400 uppercase";
+                hintEl.innerText = "⚠️ Limite démo atteinte (12/12)";
+            } else {
+                statEl.className = "font-black text-yellow-400 text-xs italic";
+                hintEl.className = "text-[10px] font-bold text-emerald-300";
+                hintEl.innerText = `${remaining} place(s) restante(s) en démo`;
+            }
+        }
+
+        function renderPlayerRow(p) {
+            const originalIdx = rawPlayers.indexOf(p);
+            return `<div class="flex justify-between bg-white/5 p-1.5 px-3 rounded-lg items-center border border-white/5 gap-2 mb-1">
+                <div class="flex items-center gap-2 flex-1 overflow-hidden">
+                    <span class="pos-badge color-${p.pos}">${POS_NAMES[p.pos]}</span>
+                    <input type="text" value="${p.nom}" 
+                        onchange="updatePlayerName(${originalIdx}, this.value)" 
+                        class="editable-name color-${p.pos}">
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="openFloatingPlayerMenu(${originalIdx}, this, event)" class="pos-picker-btn sm color-${p.pos}">
+                        <span>${POS_LETTERS[p.pos]}</span>
+                        <span class="text-[8px] opacity-70">▼</span>
+                    </button>
+                    <button onclick="removePlayer(${originalIdx})" class="text-red-500 font-black px-1 text-xs">×</button>
+                </div>
+            </div>`;
+        }
+
+        function addPlayer() {
+            const input = document.getElementById('addName');
+            const name = input.value.trim().toUpperCase();
+            const pos = parseInt(document.getElementById('addPos').value);
+            if (!name) return;
+
+            if (rawPlayers.length >= MAX_DEMO_PLAYERS) {
+                alert(`⚠️ LIMITE DÉMO ATTEINTE !\nLa version de démonstration est limitée à ${MAX_DEMO_PLAYERS} joueurs maximum (3 tables).\nSupprimez un joueur pour en ajouter un nouveau.`);
+                return;
+            }
+
+            rawPlayers.push({ nom: name, pos: pos });
+            input.value = "";
+            saveData();
+            renderInscriptions();
+        }
+
+        function updatePlayerName(idx, newName) { rawPlayers[idx].nom = newName.trim().toUpperCase(); saveData(); }
+        function updatePlayerPos(idx, newPos) { rawPlayers[idx].pos = parseInt(newPos); saveData(); renderInscriptions(); }
+        function removePlayer(idx) { rawPlayers.splice(idx, 1); saveData(); renderInscriptions(); }
+
+        function renderPartie(idx) {
+            currentIdx = idx;
+            const { tables } = getOrganizedData();
+            const nT = tables.length;
+            document.getElementById('nav-parties').innerHTML = Array.from({length: totalParties}, (_, i) => `<button onclick="renderPartie(${i})" class="tab-btn ${idx === i ? 'active' : 'bg-emerald-800 hover:bg-emerald-700 text-white'}">P${i+1}</button>`).join('');
+            const zone = document.getElementById('zone-tables'); zone.innerHTML = (nT === 0) ? "<div class='text-center py-20 opacity-30 text-xl'>Aucune table complète.</div>" : "";
+            
+            let allTPlayers = [];
+            tables.forEach(t => allTPlayers.push(...t.players));
+
+            for (let t = 0; t < nT; t++) {
+                let tableDiv = document.createElement('div'); tableDiv.className = "table-box";
+                let nomsTable = ["","","",""]; 
+                [0,1,2,3].forEach(vPos => {
+                    let tO = t;
+                    if (idx > 0) {
+                        if (vPos === 1) tO = (t - idx + nT) % nT;
+                        else if (vPos === 2) tO = (t - (idx * 2) + nT * 100) % nT;
+                        else if (vPos === 3) tO = (t + (idx * 2)) % nT;
+                    }
+                    let p = allTPlayers[(tO * 4) + vPos]; 
+                    if(p) nomsTable[p.pos] = p.nom;
+                });
+
+                let html = `<div class="flex justify-between items-center mb-2 border-b border-yellow-500/30 pb-1"><span class="text-sm font-black text-yellow-400 italic">TABLE ${t+1}</span><span id="balance-${idx}-${t}" class="balance-ok">OK</span></div><table class="w-full">`;
+                nomsTable.forEach((nom, pos) => {
+                    const score = (scoresData[idx] && scoresData[idx][t]) ? scoresData[idx][t][pos] : 0;
+                    html += `<tr class="border-b border-white/5">
+                        <td class="py-1">
+                            <div class="flex items-center gap-3">
+                                <span class="pos-badge color-${pos}">${["NORD","SUD","EST","OUEST"][pos]}</span>
+                                <span class="nom-joueur">${nom}</span>
+                            </div>
+                        </td>
+                        <td class="text-right py-1">
+                            <input type="number" value="${score||''}" placeholder="0" onfocus="this.select()" onchange="updateScore(${idx},${t},${pos},this.value)" class="input-score">
+                        </td></tr>`;
+                });
+                tableDiv.innerHTML = html + `</table>`; zone.appendChild(tableDiv);
+                updateTableBalance(idx, t);
+            }
+        }
+
+        function updateScore(p, t, pos, val) {
+            if (!scoresData[p]) scoresData[p] = {};
+            if (!scoresData[p][t]) scoresData[p][t] = [0,0,0,0];
+            scoresData[p][t][pos] = parseInt(val) || 0;
+            saveData(); updateTableBalance(p, t);
+        }
+
+        function updateTableBalance(p, t) {
+            const s = scoresData[p] && scoresData[p][t]; if (!s) return;
+            const bal = s.reduce((a, b) => a + b, 0);
+            const el = document.getElementById(`balance-${p}-${t}`);
+            if (el) { el.innerText = bal === 0 ? 'OK' : bal; el.className = bal === 0 ? 'balance-ok' : 'balance-err'; }
+        }
+
+        function renderClassement() {
+            const { tables } = getOrganizedData();
+            const nT = tables.length;
+            let allTPlayers = [];
+            tables.forEach(t => allTPlayers.push(...t.players));
+            let res = allTPlayers.map((p, pIdx) => {
+                let score = 0;
+                for (let pI = 0; pI < totalParties; pI++) {
+                    if (scoresData[pI]) {
+                        for (let t in scoresData[pI]) {
+                            for(let vPos=0; vPos<4; vPos++) {
+                                let tO = parseInt(t);
+                                if (pI > 0) {
+                                    if (vPos === 1) tO = (tO - pI + nT) % nT;
+                                    else if (vPos === 2) tO = (tO - (pI * 2) + nT * 100) % nT;
+                                    else if (vPos === 3) tO = (tO + (pI * 2)) % nT;
+                                }
+                                if ((tO * 4) + vPos === pIdx) score += scoresData[pI][t][p.pos];
+                            }
+                        }
+                    }
+                }
+                return { nom: p.nom, score };
+            }).sort((a,b) => b.score - a.score);
+            document.getElementById('classement-content').innerHTML = `<div class="text-center mb-4">
+                <h2 class="text-2xl font-black text-yellow-400 uppercase italic">CLASSEMENT GÉNÉRAL</h2>
+                <div class="text-[10px] font-black text-amber-400 uppercase tracking-widest mt-1">Version Démo (12 joueurs max)</div>
+            </div>
+            <table class="w-full">${res.map((p, i) => `<tr class="border-b border-white/10"><td class="py-2 font-black text-emerald-500 text-base w-12">#${i+1}</td><td class="py-2 font-black uppercase text-xs">${p.nom}</td><td class="py-2 text-right font-black text-yellow-400 text-xl italic">${p.score}</td></tr>`).join('')}</table>`;
+        }
+
+        function showSection(id) {
+            closeFloatingPosMenu();
+            document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('sec-' + id).classList.remove('hidden');
+            document.getElementById('btn-' + id).classList.add('active');
+            if (id === 'parties') renderPartie(currentIdx);
+            if (id === 'classement') renderClassement();
+        }
+
+        function clearAllData() {
+            if(confirm("⚠ RESET COMPLET DE LA DÉMO ?")) {
+                rawPlayers = [];
+                scoresData = {};
+                localStorage.removeItem('tarot_demo_raw_players');
+                localStorage.removeItem('tarot_demo_scores_v3');
+                localStorage.removeItem('tarot_demo_nb_parties');
+                renderInscriptions();
+                showSection('inscriptions');
+            }
+        }
+
+        function changeNbParties(v) { totalParties = parseInt(v); saveData(); if (currentIdx >= totalParties) currentIdx = 0; if (!document.getElementById('sec-parties').classList.contains('hidden')) renderPartie(currentIdx); }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('nbPartiesSelect').value = totalParties;
+            renderInscriptions();
+        });
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then(reg => console.log('SW enregistré avec succès !', reg))
+                    .catch(err => console.error('Erreur d’enregistrement du SW :', err));
+            });
+        }
+    </script>
+</body>
+</html>
+```[cite: 1]
